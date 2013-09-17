@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Rocon - Solution server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="css/bootstrap.css" rel="stylesheet"></link>
+    <link href="css/bootstrap-button.css" rel="stylesheet"></link>
+    <script src="js/jquery.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/bootstrap/bootstrap.js"></script>
+    <script src="js/bootstrap/bootstrap-button.js"></script>
+    <script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+    <script src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+      .sidebar-nav {
+        padding: 9px 0;
+      }
+
+      .myclass {
+        width:600pt;
+      }
+
+      @media (max-width: 980px) {
+        /* Enable use of floated navbar text */
+        .navbar-text.pull-right {
+          float: none;
+          padding-left: 5px;
+          padding-right: 5px;
+        }
+      }
+    </style>
+    <link href="css/bootstrap-responsive.css" rel="stylesheet"></link>
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="../assets/js/html5shiv.js"></script>
+    <![endif]-->
+    <script text="text/javascript">
+
+    var ros = new ROSLIB.Ros();
+    var agentlist_topic= "concert/list_concert_clients";
+    var agentlist_type = "concert_msgs/ConcertClients";
+    var servicelist_topic = "concert/list_service";
+    var servicelist_type = "op_msgs/ListRoconService";
+    var defaultUrL = 'ws://localhost:9090';
+
+    var agent_list_div;
+    var orders_div;
+    var hero_div;
+
+    var STATUS_STRING = ['FREE','INWORK','BAD'];
+    var SERVICE_STATUS = ['ACTIVATED','DEACTIVATED'];
+
+    $().ready(function(e){
+
+      // setting ros callbacks()
+      settingROSCallbacks();
+
+      ros.connect(defaultUrL);
+
+      $('#connectbtn').on('click',function(e) {
+          var va = $('#focusedInput').val();
+          ros.connect(va);
+          return false;
+      });
+
+      agent_list_div = $('#nav-orders');
+      services_div = $('#services');
+
+      $('#add_service').popover({title:"Warning",placement:'bottom',content:'This should open a dialog to import service from a file or from server'});
+    });
+
+    function settingROSCallbacks()
+    {
+      ros.on('connection',function() {
+        console.log("Connected");
+        // subscribe to order list
+
+        var listener = new ROSLIB.Topic({
+          ros : ros,
+          name : agentlist_topic,
+          messageType: agentlist_type 
+          });
+        listener.subscribe(processAgentList);
+
+        var serv_listener = new ROSLIB.Topic({
+          ros : ros,
+          name : servicelist_topic,
+          messageType: servicelist_type
+          });
+        serv_listener.subscribe(processServiceList);
+
+        $('#connectbtn').attr('disabled',true);
+        $('#focusedInput').attr('disabled',true);
+      }
+      );
+      ros.on('error',function(e) {
+        console.log("Error!",e);
+      }
+      );
+
+      ros.on('close',function() {
+        console.log("Connection Close!");
+        $('#connectbtn').attr('disabled',false);
+        $('#focusedInput').attr('disabled',false);
+      }
+      );
+    }
+
+    function processAgentList(msg) {
+      var i;
+
+      agent_list_div.empty();
+
+      var rowdiv = document.createElement('div');
+      rowdiv.className = 'row-fluid';
+
+      for(i in msg.clients) {
+        // add into navigation bar
+        var navli = createAgentLi(msg.clients[i]); 
+        agent_list_div.append(navli);
+      }
+      agent_list_div.append(rowdiv);
+    }
+
+    function processServiceList(msg) {
+      var i;
+      services_div.empty();
+
+      var rowdiv = document.createElement('div');
+      rowdiv.className = 'row-fluid';
+
+      for(i in msg.services) {
+        var service = createServiceDiv(msg.services[i]);
+        rowdiv.appendChild(service);
+
+        if((i+1) % 3 == 0) {
+          services_div.append(rowdiv);
+          rowdiv = document.createElement('div');
+          rowdiv.className = 'row-fluid';
+        }
+      }
+      services_div.append(rowdiv);
+    }
+
+    function createServiceDiv(service) {
+      var name = service.name + " - " + service.type + " - " + SERVICE_STATUS[service.status-1];
+      var srv = createDiv(name,'span4');
+      srv.style.border = "thin dotted";
+      srv.style.padding ="5pt";
+
+      var html = createServiceHTML(service);
+
+      $(srv).hover(
+          function() { this.style.background= "gray"; },
+          function() { this.style.background= "";     }
+      );
+
+      var template = '<div class="popover myclass"><div class="arrow"></div><div class="popover-inner"><h3 class="popover-title"></h3><div class="popover-content"><p></p></div></div></div>';
+
+      $(srv).popover({template:template,title:service.name,html:'true',content:html,placement:'bottom'});
+
+      return srv;
+    }
+
+    function createServiceHTML(service)
+    {
+      var html = document.createElement('div');
+      html.className = 'row-fluid';
+
+      var roles = document.createElement('div');
+      roles.className='span12';
+      roles.style.borderBottom = "1px solid light-gray";
+      var role_strong = document.createElement('strong');
+      role_strong.innerHTML = 'Role Requirements';
+      roles.appendChild(role_strong);
+      html.appendChild(roles);
+
+
+      var roles_div = document.createElement('div');
+      roles_div.className = 'row-fluid';
+
+      for(r in service.roles)
+      {
+        var div = createRoleline(service.roles[r],service.role_requirements[r]);
+        roles_div.appendChild(div);        
+      }
+      html.appendChild(roles_div);
+
+      var job_title = document.createElement('strong');
+      job_title.innerHTML ="Related Jobs : <br/>";
+      html.appendChild(job_title);
+      var job_div = document.createElement('div');
+      job_div.innerHTML = ""
+
+      for(s in service.jobs)
+      {
+        job_div.innerHTML += "#" + service.jobs[s] + ", "
+      }
+      html.appendChild(job_div);
+      return html;
+    }
+
+    function createRoleline(role_name,role_requirements)
+    {
+      var role_div = document.createElement('div');
+      role_div.className = 'row-fluid';
+
+      var name_div = document.createElement('strong');
+      name_div.className = 'span4';
+      name_div.innerHTML = role_name;
+
+      var req_div = document.createElement('div');
+      req_div.className = 'span6';
+      req_div.innerHTML = role_requirements;
+
+      role_div.appendChild(name_div);
+      role_div.appendChild(req_div);
+
+      var template = '<div class="popover myclass"><div class="arrow"></div><div class="popover-inner"><h3 class="popover-title"></h3><div class="popover-content"><p></p></div></div></div>';
+      
+      $(role_div).hover(
+          function() { this.style.background= "#d3d3d3"; },
+          function() { this.style.background= "";     }
+      );
+      $(role_div).popover({template:template, trigger:"hover",title:role_name,placement:'right',content:'Lists all available agents can fit into this role'});
+
+      return role_div;
+    }
+
+
+    function createAgentLi(agent) {
+      var li = document.createElement('li');
+      var p = document.createElement('p');
+      p.innerHTML = "Name : " + agent.name + "<br/> Type : " + agent.robot + "<br/>Status : " + STATUS_STRING[agent.status]; 
+      li.appendChild(p);
+
+      $(li).hover(
+        function() { this.style.background= "gray"; },
+        function() { this.style.background= "";     }
+      );
+
+      $(li).popover({container:li,title:agent.name, placement:'left',content:'Show log.. Detailed information of agent'});
+
+      return li;
+    }
+
+    </script>
+  </head>
+  <body>
+    
+    <!-- Header -->
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container-fluid">
+          <img class="brand" style="height:35px; width:120px;" src="img/rocon_logo.png"></img>
+          <a class="brand" href="#" style="margin-top:6px">Rocon Solution Viewer</a>
+          <p class="input-prepend navbar-text pull-right" style="margin-top:7px">
+            <input class="input-large" id="focusedInput" type="text" value="ws://localhost:9090"></input>
+            <button id="connectbtn" class="btn btn-primary btn-normal" data-loading-text="Connecting...">Connect</button>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div id="middle-right" class="span9">
+          <div class="row-fluid">
+            <h3 class="span3" > Service</h3>
+            <button id="add_service" style="margin-top:10pt;"class="span1 btn btn-primary btn-normal">+</button>
+          </div>
+          <div id="services" class="row-fluid"> </div><!--orders --> 
+          <hr style="border-bottom: 1px solid light-gray;"/>
+
+          <div class="row-fluid">
+            <h3 class="span3" > Job Status </h3>
+            <div id="job_status" class="row-fluid"> </div><!--orders --> 
+          </div>
+        </div><!-- middle-right-->
+
+        <div id="middle-left" class="span3">
+          <div class="well sidebar-nav">
+            <center>
+            <h2> Agents</h2>
+            </center>
+            <hr/>
+            <ul id="nav-orders" class"nav nav-list">
+            </ul>
+          </div><!-- well -->
+        </div><!-- middle-left-->
+      </div>
+
+      <hr/>
+      <!-- Footer -->
+      <footer>
+        <img style="width:120px; height:50px;" src="img/yujin_logo.jpg"></img>
+        &copy 2013
+      </footer>
+    </div><!--/.fluid-container-->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+  </body>
+</html>
+

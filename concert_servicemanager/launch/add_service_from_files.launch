@@ -1,0 +1,26 @@
+<launch>
+    <!--
+      <node pkg="concert_servicemanager" name="add_service1" type="add_service_from_file.py" output="screen">
+          <param name="filename" value="$(find concert_servicemanager)/services/admin.service"/>
+      </node>
+
+      <node pkg="concert_servicemanager" name="add_service2" type="add_service_from_file.py" output="screen">
+          <param name="filename" value="$(find concert_servicemanager)/services/annotateamap.service"/>
+      </node>
+
+      <node pkg="concert_servicemanager" name="add_service3" type="add_service_from_file.py" output="screen">
+          <param name="filename" value="$(find concert_servicemanager)/services/makeamap.service"/>
+      </node>
+
+      <node pkg="concert_servicemanager" name="add_service4" type="add_service_from_file.py">
+          <param name="filename" value="$(find concert_servicemanager)/services/teleop.service"/>
+      </node>
+-->
+      <node pkg="concert_servicemanager" name="add_service5" type="add_service_from_file.py">
+          <param name="filename" value="$(find concert_servicemanager)/services/turtle.service"/>
+      </node>
+
+      <node pkg="concert_servicemanager" name="add_service6" type="add_service_from_file.py">
+          <param name="filename" value="$(find concert_servicemanager)/services/chatter.service"/>
+      </node>
+</launch>

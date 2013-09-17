@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="concert_servicemanager" name="servicemanager" type="service_manager.py" output="screen"></node>
+</launch>

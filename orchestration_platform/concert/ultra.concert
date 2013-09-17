@@ -1,0 +1,5 @@
+<concert>
+    <launch package="orchestration_platform" name="concert.launch" port="11311"/>
+    <launch package="orchestration_platform" name="dude.launch" port="11312"/>
+    <launch package="orchestration_platform" name="dudette.launch" port="11314"/>
+</concert>
