@@ -4,13 +4,13 @@ import yaml
 import rospy
 import traceback
 
-from utils import *
+from roconservice_instance import *
 from op_msgs.msg import *
 from op_msgs.srv import *
 
 class ServiceManager(object):
 
-    rocon_services = []
+    rocon_services = {}
 
     param = {}
     srv = {}
@@ -36,7 +36,6 @@ class ServiceManager(object):
 
     def process_add_service(self,req):
         # TODO
-
         self.update()
         return AddServiceResponse(False)
 
@@ -44,15 +43,14 @@ class ServiceManager(object):
         resp = False
 
         try:
-            service = self.load_service_from_file(req.filename)
-            self.rocon_services.append(service)
-            rospy.loginfo("Service["+service.name+"] has been added")
+            service_name, service = self.load_service_from_file(req.filename)
+            self.rocon_services[service_name] = service
+            rospy.loginfo("Service["+service_name+"] has been added")
             resp = True
         except Exception as e:
             rospy.loginfo("Error in " + str(e) + " while parsing " +str(req.filename))
             tb = traceback.format_exc()
             rospy.loginfo(str(tb))
-    
             pass
             
         self.update()
@@ -64,24 +62,31 @@ class ServiceManager(object):
         act = "Activating" if req.activate else "Deactivating"
         rospy.loginfo(str(act)+" Service - " + str(req.name))
 
-        return ActivateServiceResponse(False,"Not implemented yet")
-    
+        flag = True
+        msg = "Success"
+
+        try:
+            if req.activate:
+                self.rocon_services[req.name].activate()
+            else:
+                self.rocon_services[req.name].deactivate()
+        except Exception as e:
+            flag = False
+            msg = str(e)
+            
+        self.update()
+        return ActivateServiceResponse(flag,msg)
+
     def update(self):
-        self.pub['list_service'].publish(self.rocon_services)
+        rs = [v.to_msg() for k,v in self.rocon_services.items()]
+        self.pub['list_service'].publish(rs)
 
     def load_service_from_file(self,filename):
         with open(filename) as f:
             yaml_data = yaml.load(f)
+            rsi = RoconServiceInstance(yaml_data)
 
-        s = RoconService()
-        s.name = yaml_data['name']
-        s.description = yaml_data['description']
-        s.author = yaml_data['author']
-        s.type = yaml_data['type']
-        s.status = RoconService.DEACTIVATED
-        s.implementation = yaml_to_implementation(yaml_data['implementation'])
-
-        return s
+        return rsi.get_name(), rsi
 
     def spin(self):
         rospy.loginfo("Hola! in spin")
