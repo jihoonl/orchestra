@@ -10,13 +10,14 @@ add_message_files(
   FILES
   RoconService.msg
   ListRoconService.msg
+  DedicatedApp.msg
 )
 
 add_service_files(
   FILES
   AddService.srv
   AddServiceFromFile.srv
-  ActivateService.srv
+  EnableService.srv
 )
 
 generate_messages(

@@ -48,10 +48,14 @@
     <script text="text/javascript">
 
     var ros = new ROSLIB.Ros();
+    var enable_srv;
     var agentlist_topic= "concert/list_concert_clients";
     var agentlist_type = "concert_msgs/ConcertClients";
     var servicelist_topic = "concert/list_service";
     var servicelist_type = "op_msgs/ListRoconService";
+    var enable_srv_name = "/concert/enable_service";
+    var enable_srv_type = "op_msgs/EnableService";
+
     var defaultUrL = 'ws://localhost:9090';
 
     var agent_list_div;
@@ -59,7 +63,7 @@
     var hero_div;
 
     var STATUS_STRING = ['FREE','INWORK','BAD'];
-    var SERVICE_STATUS = ['ACTIVATED','DEACTIVATED'];
+    var SERVICE_STATUS = ['INSUFFICIENT_CLIENTS','ERROR','DISABLED','ENABLED'];
 
     $().ready(function(e){
 
@@ -102,6 +106,13 @@
 
         $('#connectbtn').attr('disabled',true);
         $('#focusedInput').attr('disabled',true);
+
+        enable_srv = new ROSLIB.Service({
+          ros: ros,
+          name: enable_srv_name,
+          serviceType : enable_srv_type,
+        });
+
       }
       );
       ros.on('error',function(e) {
@@ -154,7 +165,7 @@
     }
 
     function createServiceDiv(service) {
-      var name = service.name + " - " + service.type + " - " + SERVICE_STATUS[service.status-1];
+      var name = service.name + " - " + SERVICE_STATUS[service.status+2];
       var srv = createDiv(name,'span4');
       srv.style.border = "thin dotted";
       srv.style.padding ="5pt";
@@ -178,37 +189,59 @@
       var html = document.createElement('div');
       html.className = 'row-fluid';
 
-      var roles = document.createElement('div');
-      roles.className='span12';
-      roles.style.borderBottom = "1px solid light-gray";
-      var role_strong = document.createElement('strong');
-      role_strong.innerHTML = 'Role Requirements';
-      roles.appendChild(role_strong);
-      html.appendChild(roles);
+      var enable_btn = createButton('Enable','span5');
+      html.appendChild(enable_btn);
+      
+      var disable_btn = createButton('Disable','span5');
+      html.appendChild(disable_btn);
 
-
-      var roles_div = document.createElement('div');
-      roles_div.className = 'row-fluid';
-
-      for(r in service.roles)
-      {
-        var div = createRoleline(service.roles[r],service.role_requirements[r]);
-        roles_div.appendChild(div);        
+      if(service.status == 1) {
+          $(enable_btn).attr('disabled',true);
+          $(disable_btn).attr('disabled',false);
       }
-      html.appendChild(roles_div);
-
-      var job_title = document.createElement('strong');
-      job_title.innerHTML ="Related Jobs : <br/>";
-      html.appendChild(job_title);
-      var job_div = document.createElement('div');
-      job_div.innerHTML = ""
-
-      for(s in service.jobs)
-      {
-        job_div.innerHTML += "#" + service.jobs[s] + ", "
+      else if(service.status == 0) {
+          $(enable_btn).attr('disabled',false);
+          $(disable_btn).attr('disabled',true);
       }
-      html.appendChild(job_div);
+      else {
+          $(enable_btn).attr('disabled',false);
+          $(disable_btn).attr('disabled',true);
+      }
+
+      $(enable_btn).on('click',function(e) {
+        req = new ROSLIB.ServiceRequest({
+            name:service.name,
+            enable:true,
+        });
+
+        enable_srv.callService(req,function(resp) {
+            console.log(resp);
+        });
+      });
+    
+      $(disable_btn).on('click',function(e) {
+        req = new ROSLIB.ServiceRequest({
+            name:service.name,
+            enable:false,
+        });
+
+        enable_srv.callService(req,function(resp) {
+            console.log(resp);
+        });
+    
+      });
+
       return html;
+    }
+
+    function createButton(name,extra_class)
+    {
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-primary btn-normal ' + extra_class;
+      btn.innerHTML = name;
+
+      return btn;
+
     }
 
     function createRoleline(role_name,role_requirements)

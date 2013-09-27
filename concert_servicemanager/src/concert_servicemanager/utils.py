@@ -10,7 +10,9 @@
 import rospy
 import re
 import concert_msgs.msg as concert_msgs
+import op_msgs.msg as op_msgs
 import pydot
+import yaml
 
 # local imports
 from node import Node
@@ -51,3 +53,38 @@ def yaml_to_implementation(yaml_data):
         implementation.link_graph.edges.append(concert_msgs.LinkEdge(edge['start'], edge['finish'], edge['remap_from'], edge['remap_to']))
 
     return implementation
+
+def yaml_to_dedicated_apps(data):
+    '''
+        convert yaml to array of DedicatedApp msg
+    '''
+    
+    apps = []
+    for d in data:
+        da = op_msgs.DedicatedApp(d['tuple'],d['min'])
+        apps.append(da)
+
+    # in case of same tuple is written with multiple lines
+
+
+
+    return apps
+        
+
+def create_tuple_dict(clients):
+    '''
+        parses the given list of clients and creates [tuple] - # paired dictionary 
+    '''
+    tuples = {}
+    for c in clients:
+        t = c.platform + '.' + c.system + '.' + c.robot
+                                                            
+        for a in c.apps:
+            ta = t + '.' + a.name
+                                                            
+            if ta in tuples:
+                tuples[ta] = tuples[ta] + 1                
+            else:
+                tuples[ta] = 1
+
+    return tuples

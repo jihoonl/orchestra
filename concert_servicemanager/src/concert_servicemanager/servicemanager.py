@@ -4,9 +4,11 @@ import yaml
 import rospy
 import traceback
 
+from utils import *
 from roconservice_instance import *
 from op_msgs.msg import *
 from op_msgs.srv import *
+from concert_msgs.msg import *
 
 class ServiceManager(object):
 
@@ -15,12 +17,14 @@ class ServiceManager(object):
     param = {}
     srv = {}
     pub = {}
+    sub = {}
 
     def __init__(self):    
-        rospy.loginfo("Hola! in init")
+        self.log("Hola! in init")
 
         self.setup_srvs()
         self.setup_pubs()
+        self.setup_subs()
         self.update()
 
 
@@ -28,10 +32,13 @@ class ServiceManager(object):
         self.srv['add_a_service_from_file'] =rospy.Service('add_a_service_from_file',AddServiceFromFile,self.process_add_service_from_file)
         self.srv['add_a_service'] =rospy.Service('add_a_service',AddServiceFromFile,self.process_add_service)
 
-        self.srv['activate_a_service'] = rospy.Service('activate_a_service',ActivateService,self.process_activate_service)
+        self.srv['enable_service'] = rospy.Service('enable_service',EnableService,self.process_enable_service)
 
     def setup_pubs(self):
         self.pub['list_service'] = rospy.Publisher('list_service',ListRoconService,latch = True)
+
+    def setup_subs(self):
+        self.sub['list_concert_clients'] = rospy.Subscriber('list_concert_clients',ConcertClients,self.process_list_concert_clients)
 
 
     def process_add_service(self,req):
@@ -45,37 +52,56 @@ class ServiceManager(object):
         try:
             service_name, service = self.load_service_from_file(req.filename)
             self.rocon_services[service_name] = service
-            rospy.loginfo("Service["+service_name+"] has been added")
+            self.log("["+service_name+"] has been added")
             resp = True
         except Exception as e:
-            rospy.loginfo("Error in " + str(e) + " while parsing " +str(req.filename))
+            self.log("Error in " + str(e) + " while parsing " +str(req.filename))
             tb = traceback.format_exc()
-            rospy.loginfo(str(tb))
+            self.log(str(tb))
             pass
             
         self.update()
 
         return AddServiceFromFileResponse(resp)
 
-    def process_activate_service(self,req):
-        
-        act = "Activating" if req.activate else "Deactivating"
-        rospy.loginfo(str(act)+" Service - " + str(req.name))
+    def process_enable_service(self,req):
+        act = "Enabling" if req.enable else "Disabling"
+        self.log(str(act)+" Service - " + str(req.name))
 
         flag = True
         msg = "Success"
 
         try:
-            if req.activate:
-                self.rocon_services[req.name].activate()
+            if req.enable:
+                self.rocon_services[req.name].enable()
             else:
-                self.rocon_services[req.name].deactivate()
+                self.rocon_services[req.name].disable()
         except Exception as e:
             flag = False
             msg = str(e)
             
         self.update()
-        return ActivateServiceResponse(flag,msg)
+        return EnableServiceResponse(flag,msg)
+
+    def process_list_concert_clients(self,msg):
+        '''
+            Receives a list of clients.
+            Creates a list of tuples
+            pass the list to check the current client lists fulfills services' requirements
+            then update status of services
+
+            TODO: Current just passes concert client lists directly to the service instance
+                 this will be re-developed when dedicated_component idea is clear
+        '''
+#        tuples = create_tuple_dict(msg.clients)
+        clients = {}
+        for c in msg.clients:
+            clients[c.name] = copy.deepcopy(c)
+
+        for k, v in self.rocon_services.items():
+            v.update_client_status(clients)
+
+        self.update()
 
     def update(self):
         rs = [v.to_msg() for k,v in self.rocon_services.items()]
@@ -88,6 +114,9 @@ class ServiceManager(object):
 
         return rsi.get_name(), rsi
 
+    def log(self,msg):
+        rospy.loginfo("Service Manager \t: " + str(msg))
+
     def spin(self):
-        rospy.loginfo("Hola! in spin")
+        self.log("Hola! in spin")
         rospy.spin()

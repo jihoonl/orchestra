@@ -1,7 +1,11 @@
 name: Turtle Service
 description: Turtlesim service 
 author: Yujinrobot
-type: automatic
+dedicated_apps:
+  - tuple: linux.ros.pc.turtle_concert/turtle_stroll
+    min: 2
+  - tuple: linux.ros.pc.turtle_concert/turtle_stroll_sim
+    min: 1 
 implementation:
   nodes:
     - id: kobuki

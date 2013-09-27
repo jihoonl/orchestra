@@ -1,7 +1,9 @@
 name: Chatter
 description: Chatting between agents 
 author: YujinRobot
-type: automatic
+dedicated_apps:
+  - tuple: linux.ros.pc.rocon_apps/talker
+    min: 1
 implementation:
   nodes:
     - id: dudes

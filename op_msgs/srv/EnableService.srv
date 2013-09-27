@@ -1,5 +1,5 @@
 string name
-bool activate
+bool enable
 ---
 bool success
 string message

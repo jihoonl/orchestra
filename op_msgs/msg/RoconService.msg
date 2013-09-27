@@ -1,9 +1,12 @@
 string name
 string description
-string type
 string author
 int16  status
+DedicatedApp[] dedicated_apps
 concert_msgs/Implementation implementation
 
-int16 ACTIVATED      = 1
-int16 DEACTIVATED    = 2
+int16 ERROR     = -1
+int16 INSUFFICIENT_CLIENTS = -2
+
+int16 DISABLED  =  0
+int16 ENABLED   =  1
