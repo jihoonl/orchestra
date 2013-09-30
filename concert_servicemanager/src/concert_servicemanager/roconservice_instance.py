@@ -7,7 +7,8 @@ import copy
 from utils import *
 from op_msgs.msg import *
 from op_msgs.srv import *
-from concert_orchestra import compatibility_tree, implementation
+from implementation import *
+from concert_orchestra import compatibility_tree
 
 class RoconServiceInstance(object):
     data = None
@@ -75,7 +76,7 @@ class RoconServiceInstance(object):
         s.dedicated_apps = yaml_to_dedicated_apps(self.data['dedicated_apps']) 
         s.status = self.status
         
-        s.implementation = yaml_to_implementation(self.data['implementation'])
+        s.implementation = yaml_to_implementation_msg(self.data['implementation'])
 
         return s
 
@@ -89,12 +90,10 @@ class RoconServiceInstance(object):
                   Will replace this in later milestone 
         '''
         self.log("in update_client_status")
-        impl = yaml_to_implementation(self.data['implementation'])
-        self.log(str(impl))
-        nodes = impl.link_graph.nodes
+        impl = Implementation(self.data['implementation'],self.data['name'])
+        nodes = impl.nodes
         tree = compatibility_tree.create_compatibility_tree(nodes,clients)
     
-
         self.log(str(tree))
 
 

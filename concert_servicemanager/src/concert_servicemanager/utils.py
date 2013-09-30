@@ -22,7 +22,7 @@ from node import Node
 ##############################################################################
 
 
-def yaml_to_implementation(yaml_data):
+def yaml_to_implementation_msg(yaml_data):
     '''
       If a solution implementation is being loaded, this stores the data.
     '''
